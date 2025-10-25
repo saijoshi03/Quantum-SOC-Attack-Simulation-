@@ -1,0 +1,141 @@
+
+from flask import Flask, jsonify, render_template_string
+import threading, random, time, json
+from datetime import datetime
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import AerSimulator
+
+
+def quantum_random_bit():
+    """Generate a random bit using a quantum Hadamard gate."""
+    qc = QuantumCircuit(1, 1)
+    qc.h(0)
+    qc.measure(0, 0)
+
+    simulator = AerSimulator()
+    qc = transpile(qc, simulator)
+    result = simulator.run(qc, shots=1).result()
+    counts = result.get_counts()
+    return int(max(counts, key=counts.get))
+
+def grover_search(secret="101"):
+    """Simulate a basic quantum search (mocked for threat pattern discovery)."""
+    qc = QuantumCircuit(3)
+    qc.h([0, 1, 2])
+    qc.barrier()
+    qc.measure_all()
+
+    simulator = AerSimulator()
+    qc = transpile(qc, simulator)
+    result = simulator.run(qc, shots=100).result()
+    counts = result.get_counts()
+    return counts
+
+
+LOGS = []
+THREAT_PATTERNS = ["QKD-Anomaly", "Qubit-Leak", "Quantum-Decryption", "QTI-Suspect"]
+LOCK = threading.Lock()
+
+def generate_log_entry():
+    """Simulate a SOC log with random or quantum-based patterns."""
+    bit = quantum_random_bit()
+    log_level = random.choice(["INFO", "WARN", "ERROR", "CRITICAL"])
+    threat_type = random.choice(THREAT_PATTERNS)
+    src_ip = f"10.0.{random.randint(0,255)}.{random.randint(0,255)}"
+    dst_ip = f"192.168.{random.randint(0,255)}.{random.randint(0,255)}"
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    log = {
+        "timestamp": timestamp,
+        "source_ip": src_ip,
+        "destination_ip": dst_ip,
+        "level": log_level,
+        "event": threat_type if bit else "Normal Traffic",
+        "quantum_bit": bit
+    }
+
+
+    if log["level"] == "CRITICAL" and log["quantum_bit"] == 1:
+        log["alert"] = " Quantum Threat Detected"
+
+    return log
+
+def log_generator():
+    """Continuously generate mock logs."""
+    while True:
+        entry = generate_log_entry()
+        with LOCK:
+            LOGS.append(entry)
+            if len(LOGS) > 100:
+                LOGS.pop(0)
+        time.sleep(2)  
+
+
+app = Flask(__name__)
+
+
+TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quantum SOC Dashboard</title>
+  <style>
+    body { font-family: Arial; background: #0b0c10; color: #66fcf1; margin: 20px; }
+    h1 { color: #45a29e; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #45a29e; padding: 8px; text-align: center; }
+    th { background: #1f2833; }
+    tr:nth-child(even) { background: #1f2833; }
+    .alert { color: #ff4444; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>⚛ Quantum SOC Dashboard ⚛</h1>
+  <table id="logTable">
+    <thead>
+      <tr><th>Time</th><th>Source IP</th><th>Destination IP</th><th>Level</th><th>Event</th><th>Q-Bit</th><th>Alert</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function loadLogs() {
+      const res = await fetch('/api/logs');
+      const data = await res.json();
+      const tbody = document.querySelector('#logTable tbody');
+      tbody.innerHTML = '';
+      data.reverse().forEach(log => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${log.timestamp}</td>
+          <td>${log.source_ip}</td>
+          <td>${log.destination_ip}</td>
+          <td>${log.level}</td>
+          <td>${log.event}</td>
+          <td>${log.quantum_bit}</td>
+          <td class="alert">${log.alert || ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    setInterval(loadLogs, 2000);
+    loadLogs();
+  </script>
+</body>
+</html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(TEMPLATE)
+
+@app.route('/api/logs')
+def get_logs():
+    with LOCK:
+        return jsonify(LOGS)
+
+if __name__ == "__main__":
+    print(" Starting Quantum SOC Dashboard on http://127.0.0.1:5000")
+    t = threading.Thread(target=log_generator, daemon=True)
+    t.start()
+    app.run(debug=False)
