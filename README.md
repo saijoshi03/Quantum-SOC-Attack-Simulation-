@@ -13,7 +13,7 @@ It integrates **Qiskit (quantum computing)** and **Flask (SOC dashboard)** to vi
 
 ### 📄 Report
 Full project report available at:
-[`docs/Quantum_SOC_Attack_Simulation_Report.pdf`] https://github.com/saijoshi03/Quantum-SOC-Attack-Simulation-/blob/main/CA%20FINAL%20ACTIVITY%20.pdf
+https://github.com/saijoshi03/Quantum-SOC-Attack-Simulation-/blob/main/CA%20FINAL%20ACTIVITY%20.pdf
 
 ### 🧩 Installation
 ```bash
